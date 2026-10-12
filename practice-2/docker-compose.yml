@@ -1,8 +1,33 @@
 services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: postgres-primary
+    environment:
+      POSTGRES_USER: shop
+      POSTGRES_PASSWORD: shop
+      POSTGRES_DB: shop
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"     # ⚠️ только для отладки; в prod убрать
+    networks:
+      - highload-net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U shop -d shop"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
   app1:
     build: .
     container_name: app1
     hostname: app1
+    environment:
+      - INSTANCE_NAME=app1
+      - DATABASE_URL=postgresql+asyncpg://shop:shop@postgres:5432/shop
+    depends_on:
+      postgres:
+        condition: service_healthy
     networks:
       - highload-net
 
@@ -10,6 +35,12 @@ services:
     build: .
     container_name: app2
     hostname: app2
+    environment:
+      - INSTANCE_NAME=app2
+      - DATABASE_URL=postgresql+asyncpg://shop:shop@postgres:5432/shop
+    depends_on:
+      postgres:
+        condition: service_healthy
     networks:
       - highload-net
 
@@ -17,6 +48,12 @@ services:
     build: .
     container_name: app3
     hostname: app3
+    environment:
+      - INSTANCE_NAME=app3
+      - DATABASE_URL=postgresql+asyncpg://shop:shop@postgres:5432/shop
+    depends_on:
+      postgres:
+        condition: service_healthy
     networks:
       - highload-net
 
@@ -37,3 +74,6 @@ services:
 networks:
   highload-net:
     driver: bridge
+
+volumes:
+  pg_data:
